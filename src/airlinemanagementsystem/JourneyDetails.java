@@ -9,7 +9,10 @@ import net.proteanit.sql.DbUtils;
 public class JourneyDetails extends JFrame implements ActionListener{
     JTable table;
     JTextField pnr;
+    JTextField aadhar;
     JButton show;
+    JButton showByAadhar;
+    JButton showAll;
     
     public JourneyDetails() {
         
@@ -31,30 +34,94 @@ public class JourneyDetails extends JFrame implements ActionListener{
         show.setBounds(290, 50, 120, 25);
         show.addActionListener(this);
         add(show);
+
+        JLabel lblaadhar = new JLabel("Aadhar");
+        lblaadhar.setFont(new Font("Tahoma", Font.PLAIN, 16));
+        lblaadhar.setBounds(450, 50, 100, 25);
+        add(lblaadhar);
+
+        aadhar = new JTextField();
+        aadhar.setBounds(540, 50, 130, 25);
+        add(aadhar);
+
+        showByAadhar = new JButton("Show For Aadhar");
+        showByAadhar.setBackground(Color.BLACK);
+        showByAadhar.setForeground(Color.WHITE);
+        showByAadhar.setBounds(690, 50, 150, 25);
+        showByAadhar.addActionListener(this);
+        add(showByAadhar);
+
+        showAll = new JButton("Show All Journeys");
+        showAll.setBackground(Color.DARK_GRAY);
+        showAll.setForeground(Color.WHITE);
+        showAll.setBounds(540, 90, 300, 25);
+        showAll.addActionListener(this);
+        add(showAll);
         
         table = new JTable();
         
         JScrollPane jsp = new JScrollPane(table);
-        jsp.setBounds(0, 100, 800, 150);
+        jsp.setBounds(0, 140, 900, 180);
         jsp.setBackground(Color.WHITE);
         add(jsp);
         
-        setSize(800, 600);
-        setLocation(400, 150);
+        setSize(920, 620);
+        setLocation(360, 120);
         setVisible(true);
+        loadAllReservations();
     }
     
     public void actionPerformed(ActionEvent ae) {
+        if (ae.getSource() == show) {
+            String pnrValue = pnr.getText().trim();
+            if (pnrValue.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Please enter a PNR to search.");
+                return;
+            }
+            loadReservations("select * from reservation where PNR = ?", pnrValue, "No information found for the provided PNR.");
+        } else if (ae.getSource() == showByAadhar) {
+            String aadharValue = aadhar.getText().trim();
+            if (aadharValue.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Please enter an Aadhar number to search.");
+                return;
+            }
+            loadReservations("select * from reservation where aadhar = ?", aadharValue, "No journeys found for the provided Aadhar number.");
+        } else if (ae.getSource() == showAll) {
+            loadAllReservations();
+        }
+    }
+
+    private void loadReservations(String query, String parameter, String emptyMessage) {
         try {
             Conn conn = new Conn();
-            ResultSet rs = conn.s.executeQuery("select * from reservation where PNR = '"+pnr.getText()+"'");
-            
+            PreparedStatement ps = conn.c.prepareStatement(query);
+            ps.setString(1, parameter);
+            ResultSet rs = ps.executeQuery();
+
             if (!rs.isBeforeFirst()) {
-                JOptionPane.showMessageDialog(null, "No Information Found");
+                table.setModel(new javax.swing.table.DefaultTableModel());
+                JOptionPane.showMessageDialog(null, emptyMessage);
                 return;
             }
             table.setModel(DbUtils.resultSetToTableModel(rs));
-        } catch(Exception e) {
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Unable to fetch journey details. Please try again.");
+            e.printStackTrace();
+        }
+    }
+
+    private void loadAllReservations() {
+        try {
+            Conn conn = new Conn();
+            ResultSet rs = conn.s.executeQuery("select * from reservation order by aadhar, PNR");
+            if (!rs.isBeforeFirst()) {
+                table.setModel(new javax.swing.table.DefaultTableModel());
+                JOptionPane.showMessageDialog(null, "No journey records available.");
+                return;
+            }
+            table.setModel(DbUtils.resultSetToTableModel(rs));
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Unable to load journeys. Please try again.");
             e.printStackTrace();
         }
     }
